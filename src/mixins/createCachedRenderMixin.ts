@@ -39,12 +39,27 @@ export type CachedRenderParent = Parent & {
 	invalidate(): void;
 }
 
+export interface NodeAttributeFunction {
+	/**
+	 * A function that returns a set of VNode properties that will be mixed into the
+	 * current set of properties for the render
+	 * @param properties The current set of node properties
+	 */
+	(this: CachedRender, properties: VNodeProperties): VNodeProperties;
+}
+
 export interface CachedRender {
 	/**
 	 * Returns the node attribute properties to be used by a render function
 	 * @param overrides Any optional overrides of properties
 	 */
 	getNodeAttributes(overrides?: VNodeProperties): VNodeProperties;
+
+	/**
+	 * An array of functions that can supply VNodeProperties that are mixed into the
+	 * node attributes for the current VNode being rendered
+	 */
+	nodeAttributes: NodeAttributeFunction[];
 
 	/**
 	 * Returns any children VNodes that are part of the widget
@@ -148,6 +163,9 @@ const createCachedRenderMixin = createStateful
 					props[key] = this.listeners[key];
 				}
 				const classes: { [index: string]: boolean; } = {};
+
+				/* Maquette will not recognise classes that are not present from the start, therefore we need to create
+				 * a set of classes, irrespective of if there are enabled */
 				const widgetClasses = widgetClassesMap.get(this);
 
 				widgetClasses.forEach((c) => classes[c] = false);
@@ -160,11 +178,22 @@ const createCachedRenderMixin = createStateful
 				props.classes = classes;
 				props.styles = this.styles || {};
 				props.key = this;
+				this.nodeAttributes.forEach((nodeAttributeFunction) => {
+					/* duplicating props to avoid functions changing the argument */
+					const mixinProps: VNodeProperties = nodeAttributeFunction.call(this, assign({}, props));
+					if (mixinProps) {
+						assign(props, mixinProps);
+					}
+				});
+
 				if (overrides) {
 					assign(props, overrides);
 				}
+
 				return props;
 			},
+
+			nodeAttributes: [],
 
 			getChildrenNodes(this: CachedRenderMixin<CachedRenderState>): (VNode | string)[] {
 				return this.state.label ? [ this.state.label ] : undefined;

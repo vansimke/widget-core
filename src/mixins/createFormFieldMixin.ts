@@ -4,7 +4,7 @@ import { EventedListener, TargettedEventObject } from 'dojo-compose/mixins/creat
 import createStateful, { Stateful, State, StatefulOptions } from 'dojo-compose/mixins/createStateful';
 import { Handle } from 'dojo-core/interfaces';
 import { assign } from 'dojo-core/lang';
-import createCachedRenderMixin, { CachedRenderMixin, CachedRenderState } from './createCachedRenderMixin';
+import createCachedRenderMixin, { CachedRenderMixin, CachedRenderState, NodeAttributeFunction } from './createCachedRenderMixin';
 import createCancelableEvent, { CancelableEvent } from '../util/createCancelableEvent';
 import { stringToValue, valueToString } from '../util/lang';
 
@@ -47,8 +47,31 @@ export interface FormField<V> {
 	 */
 	value?: string;
 
+	nodeAttributes: NodeAttributeFunction[];
+
 	on?(type: 'valuechange', listener: EventedListener<ValueChangeEvent<V>>): Handle;
 	on?(type: string, listener: EventedListener<TargettedEventObject>): Handle;
+}
+
+/**
+ * Provide form specific node attributes
+ */
+function formNodeAttributes(this: FormFieldMixin<any, FormFieldMixinState<any>>) {
+	const props: VNodeProperties = Object.create(null);
+
+	if (this.type) {
+		props['type'] = this.type;
+	}
+	/* value should always be copied */
+	props.value = this.value;
+	if ('name' in this.state) {
+		props.name = this.state.name;
+	}
+	if (this.state.disabled) {
+		props['disabled'] = 'disabled';
+	}
+
+	return props;
 }
 
 export type FormFieldMixin<V, S extends FormFieldMixinState<V>> = FormField<V> & Stateful<S> & CachedRenderMixin<S>;
@@ -76,7 +99,9 @@ const createFormMixin: FormMixinFactory = compose({
 					this.setState({ value: stringToValue(event.value) });
 				}
 			}
-		}
+		},
+
+		nodeAttributes: [ formNodeAttributes ]
 	}, (instance: FormField<any>, options: FormFieldMixinOptions<any, FormFieldMixinState<any>>) => {
 		if (options) {
 			const { type } = options;
@@ -96,34 +121,6 @@ const createFormMixin: FormMixinFactory = compose({
 			}
 		}
 	})
-	.mixin({
-		mixin: createCachedRenderMixin,
-		aspectAdvice: {
-			before: {
-				getNodeAttributes(this: FormFieldMixin<any, FormFieldMixinState<any>>, ...args: any[]) {
-					const overrides: VNodeProperties = {};
-
-					if (this.type) {
-						overrides['type'] = this.type;
-					}
-					/* value should always be copied */
-					overrides.value = this.value;
-					if ('name' in this.state) {
-						overrides.name = this.state.name;
-					}
-					if (this.state.disabled) {
-						overrides['disabled'] = 'disabled';
-					}
-
-					if (!args[0]) {
-						args[0] = {};
-					}
-					assign(args[0], overrides);
-
-					return args;
-				}
-			}
-		}
-	});
+	.mixin(createCachedRenderMixin);
 
 export default createFormMixin;
