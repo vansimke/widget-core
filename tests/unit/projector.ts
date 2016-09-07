@@ -1,21 +1,23 @@
 import 'dojo/has!host-node?../support/loadJsdom';
 import * as registerSuite from 'intern!object';
 import * as assert from 'intern/chai!assert';
-import projector, { createProjector } from 'src/projector';
-import { h } from 'maquette';
-import createRenderable from 'src/mixins/createRenderable';
-import createDestroyable from 'dojo-compose/mixins/createDestroyable';
 import { ComposeFactory } from 'dojo-compose/compose';
-import { Child } from 'src/mixins/interfaces';
+import createDestroyable from 'dojo-compose/mixins/createDestroyable';
+import { h } from 'maquette';
+import createRenderable from '../../src/mixins/createRenderable';
+import { Child } from '../../src/mixins/interfaces';
+import projector, { createProjector, isProjector } from '../../src/projector';
 
 const createRenderableChild = createDestroyable
 	.mixin(createRenderable) as ComposeFactory<Child, any>;
 
 registerSuite({
 	name: 'projector',
+
 	setup() {
 		projector.clear();
 	},
+
 	basic(this: any) {
 		const dfd = this.async();
 		const childNodeLength = document.body.childNodes.length;
@@ -44,6 +46,7 @@ registerSuite({
 			}, 300);
 		}).catch(dfd.reject);
 	},
+
 	'lifecycle'(this: any) {
 		const dfd = this.async();
 		const div = document.createElement('div');
@@ -75,6 +78,7 @@ registerSuite({
 			}, 300);
 		}).catch(dfd.reject);
 	},
+
 	'\'attach\' event'() {
 		const div = document.createElement('div');
 		document.body.appendChild(div);
@@ -100,6 +104,7 @@ registerSuite({
 			projector1.destroy();
 		});
 	},
+
 	'reattach'() {
 		const projector1 = createProjector({});
 		const div = document.createElement('div');
@@ -108,6 +113,7 @@ registerSuite({
 		assert.strictEqual(promise, projector1.attach(), 'same promise should be returned');
 		return promise.then((handle) => { handle.destroy(); });
 	},
+
 	'setRoot throws when already attached'() {
 		const projector = createProjector({});
 		const div = document.createElement('div');
@@ -119,6 +125,7 @@ registerSuite({
 			handle.destroy();
 		});
 	},
+
 	'append()'(this: any) {
 		const dfd = this.async();
 		const projector = createProjector();
@@ -142,6 +149,7 @@ registerSuite({
 			}), 300);
 		}).catch(dfd.reject);
 	},
+
 	'insert()'(this: any) {
 		const dfd = this.async();
 		const projector = createProjector();
@@ -160,5 +168,12 @@ registerSuite({
 				attachHandle.destroy();
 			}), 300);
 		}).catch(dfd.reject);
+	},
+
+	'isProjector()'() {
+		const projector = createProjector();
+		assert.isTrue(isProjector(projector));
+		assert.isFalse(isProjector({ projector: {} }));
+		assert.isFalse(isProjector('foo'));
 	}
 });

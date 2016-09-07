@@ -11,34 +11,32 @@ import createVNodeEvented, { VNodeEvented } from './mixins/createVNodeEvented';
 import createParentListMixin, { ParentListMixin, ParentListMixinOptions } from './mixins/createParentListMixin';
 import { Child } from './mixins/interfaces';
 
-export type AttachType = 'append' | 'merge' | 'replace';
-
-export interface ProjectorOptions extends ParentListMixinOptions<Child>, EventedOptions {
-	/**
-	 * The root element for the projector
-	 */
-	root?: Element;
-
-	/**
-	 * If `true`, automatically attach to the DOM during creation (by merging). Do the same if a valid attach type is
-	 * provided (see `AttachOptions`). The attach type determines how the projector is attached.
-	 */
-	autoAttach?: boolean | AttachType;
-}
-
 export interface AttachOptions {
 	/**
 	 * If `'append'` it will append to the root. If `'merge'` it will merge with the root. If `'replace'` it will
 	 * replace the root.
 	 */
-
 	type?: AttachType;
+
 	/**
 	 * If `type` is `'append'` or `'replace'` then `tagName` will be used to determine what tag name
 	 * is used to append to or replace the root element. Defaults to `div`.
 	 */
 	tagName?: string;
 }
+
+/**
+ * The different types of attachment supported
+ */
+export type AttachType = 'append' | 'merge' | 'replace';
+
+/**
+ * An abstraction of the Maquette Projector that allows the virtual DOM projector to
+ * behave similiar to other widgets
+ */
+export type Projector = VNodeEvented & ParentListMixin<Child> & ProjectorMixin;
+
+export interface ProjectorFactory extends ComposeFactory<Projector, ProjectorOptions> { }
 
 export interface ProjectorMixin {
 	/**
@@ -105,6 +103,19 @@ export interface ProjectorMixin {
 	state: ProjectorState;
 }
 
+export interface ProjectorOptions extends ParentListMixinOptions<Child>, EventedOptions {
+	/**
+	 * The root element for the projector
+	 */
+	root?: Element;
+
+	/**
+	 * If `true`, automatically attach to the DOM during creation (by merging). Do the same if a valid attach type is
+	 * provided (see `AttachOptions`). The attach type determines how the projector is attached.
+	 */
+	autoAttach?: boolean | AttachType;
+}
+
 export interface ProjectorOverrides {
 	/**
 	 * Event emitted after the projector has been attached to the DOM.
@@ -114,15 +125,27 @@ export interface ProjectorOverrides {
 	on(type: string, listener: EventedListener<TargettedEventObject>): Handle;
 }
 
-export type Projector = VNodeEvented & ParentListMixin<Child> & ProjectorMixin;
-
-export interface ProjectorFactory extends ComposeFactory<Projector, ProjectorOptions> { }
-
-export enum ProjectorState {
+/**
+ * An enumerated type that represents the state of the projector
+ */
+export const enum ProjectorState {
 	Attached = 1,
 	Detached
 };
 
+/**
+ * A custom type guard that guards for values that are Projectors or not
+ *
+ * @param value The value to guard against
+ * @return `true` if the value is a projector, otherwise `false`
+ */
+export function isProjector(value: any): value is Projector {
+	return Boolean(value && value.projector && typeof value.projector.scheduleRender === 'function');
+}
+
+/**
+ * Internal map of meta data related to the projector
+ */
 interface ProjectorData {
 	afterInitialCreate?: () => void;
 	attachHandle?: Handle;
@@ -134,12 +157,30 @@ interface ProjectorData {
 	tagName?: string;
 }
 
+/**
+ * The weak map of meta data associated with instances of the projector
+ */
 const projectorDataMap = new WeakMap<Projector, ProjectorData>();
 
+/**
+ * A no operation handle
+ */
 const noopHandle = { destroy() { } };
+
+/**
+ * A static emptyVNode
+ */
 const emptyVNode = h('div');
+
+/**
+ * A no operation render function
+ */
 const noopVNode = function(): VNode { return emptyVNode; };
 
+/**
+ * Create an instance of a project which attaches to the DOM and renders the virtual DOM
+ * that is provided by its children.
+ */
 export const createProjector: ProjectorFactory = compose<ProjectorMixin, ProjectorOptions>({
 		getNodeAttributes(this: Projector, overrides?: VNodeProperties): VNodeProperties {
 			/* TODO: This is the same logic as createCachedRenderMixin, merge somehow */
@@ -269,8 +310,8 @@ export const createProjector: ProjectorFactory = compose<ProjectorMixin, Project
 		mixin: createVNodeEvented,
 		initialize(instance) {
 			/* We have to stub out listeners for Maquette, otherwise it won't allow us to change them down the road */
-			instance.on('touchend', function () {});
-			instance.on('touchmove', function () {});
+			instance.on('touchend', function () {}); /* used by ResizeMixin */
+			instance.on('touchmove', function () {}); /* used by ResizeMixin */
 		}
 	})
 	.mixin({
@@ -298,6 +339,9 @@ export const createProjector: ProjectorFactory = compose<ProjectorMixin, Project
 		}
 	});
 
+/**
+ * The default instance of a projector, which by default will attach to `document.body`
+ */
 const defaultProjector: Projector = typeof global.document === 'undefined' ? null : createProjector();
 
 export default defaultProjector;
