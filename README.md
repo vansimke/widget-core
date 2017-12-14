@@ -1313,3 +1313,10 @@ The benchmarking setup relies heavily on [js-framework-benchmark](https://github
 ## Licensing Information
 
 © 2017 [JS Foundation](https://js.foundation/). [New BSD](http://opensource.org/licenses/BSD-3-Clause) license.
+
+
+<!-- doc-viewer-config
+{
+    "api": "docs/api.json"
+}
+-->
