@@ -1317,6 +1317,9 @@ The benchmarking setup relies heavily on [js-framework-benchmark](https://github
 
 <!-- doc-viewer-config
 {
-    "api": "docs/api.json"
+    "api": "docs/api.json",
+    "pages": [
+        "README.md"
+    ]
 }
 -->
